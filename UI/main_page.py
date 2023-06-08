@@ -1,22 +1,27 @@
 import asyncio
+import random
 import re
+import urllib
 from pathlib import Path
 import threading
 import time
 from tkinter import PhotoImage
 from tkinter.filedialog import askopenfilename
 import ttkbootstrap as ttk
+import urllib3
 from playwright.async_api import async_playwright, Playwright
+from playwright_recaptcha import recaptchav2
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledText
 from ttkbootstrap.tooltip import ToolTip
 
 from oem.oem_imgs.images_base import oem_image_dic
-from setting.GLOBAL import LOG_FILE, OEM_NAME, BASE_DIR_PATH
+from setting.GLOBAL import LOG_FILE, OEM_NAME, BASE_DIR_PATH, SUCCESS_ACCOUNT_FILE, FAILED_ACCOUNT_FILE
 from utils.COMMON_UTILS import common_utils
 from utils.LogUtil import logger
 
 from db.db_control import db_controller
+
 
 
 class SubscribePremium(ttk.Frame):
@@ -291,17 +296,17 @@ class SubscribePremium(ttk.Frame):
             tasks_num = len(email_files_list)
 
             # threads = []
-            for num in range(tasks_num):
-                t = threading.Thread(target=self.start_new, args=(email_files_list[num].strip(), sem))
+            for num in range(thread_num):
+                t = threading.Thread(target=self.start_new, args=( sem,))
                 t.daemon = True
                 t.start()
     # endregion
 
-    def start_new(self, email: str, sem: threading.Semaphore):
+    def start_new(self,  sem: threading.Semaphore):
         with sem:
             try:
                 loop = asyncio.new_event_loop()
-                loop.run_until_complete(self.register_textfree(email=email))
+                loop.run_until_complete(self.register_textfree())
             except asyncio.CancelledError as cancel_error:
                 print(f"loop被强制取消，触发取消错误：{cancel_error}")
 
@@ -335,8 +340,11 @@ class SubscribePremium(ttk.Frame):
         self.pb_label.configure(text=f'完成: {self.process_bar_value}%')
 
 
-    async def register_textfree(self, email: str):
-        task_register_textfree = asyncio.create_task(self.register_textfree_ie(email=email), name=f"{email} 开通会员任务")
+    async def register_textfree(self):
+
+
+
+        task_register_textfree = asyncio.create_task(self.register_textfree_ie())
 
         done, pending = await asyncio.wait([task_register_textfree])
         for task in done:
@@ -344,28 +352,41 @@ class SubscribePremium(ttk.Frame):
 
             print(f"任务 {task.get_name()} 执行完毕！结果为：{task.result()}")
 
-    async def register_textfree_ie(self, email: str):
+    async def register_textfree_ie(self):
         # return
         # phone_number = Path(session_file).stem
+        failed_times = 0
+        while True:
+            email = common_utils.get_and_del_first_line(Path(self.email_path_var.get()))
 
+            if email == "":
+                # self.insert_log("邮箱文件已经全部使用完毕！")
+                failed_times += 1
+                if failed_times >= 5:
+                    self.insert_log("邮箱文件已经全部使用完毕！")
 
+                await asyncio.sleep(0.1)
 
-        self.insert_log(f"账号 {email} 正在进行浏览器登录...")
-        # return
-        async with async_playwright() as playwright:
-            # json_file = Path(session_file).parent / f"{Path(session_file).stem}.json"
-            subscribe_premium_res = await self.do_register_textfree(playwright=playwright, email=email)
-            print(subscribe_premium_res)
-
-            # json_file = Path(session_file).parent / f"{Path(session_file).stem}.json"
-
-            if subscribe_premium_res is True:
-                self.suc += 1
             else:
-                self.failed += 1
+                failed_times = 0
+                self.insert_log(f"账号 {email} 正在进行浏览器注册...")
+                # return
+                async with async_playwright() as playwright:
+                    # json_file = Path(session_file).parent / f"{Path(session_file).stem}.json"
+                    subscribe_premium_res = await self.do_register_textfree(playwright=playwright, email=email)
+                    print(subscribe_premium_res)
 
-        self.complete += 1
-        self.change_process_bar_frame(int(self.complete * 100 / self.amount))
+                    # json_file = Path(session_file).parent / f"{Path(session_file).stem}.json"
+
+                    if subscribe_premium_res is True:
+                        common_utils.insert_txt_line(file=SUCCESS_ACCOUNT_FILE, text=email)
+                        self.suc += 1
+                    else:
+                        common_utils.insert_txt_line(file=FAILED_ACCOUNT_FILE, text=email)
+                        self.failed += 1
+
+                self.complete += 1
+                self.change_process_bar_frame(int(self.complete * 100 / self.amount))
 
     async def do_register_textfree(self, playwright: Playwright,email:str) -> bool:
 
@@ -420,7 +441,7 @@ class SubscribePremium(ttk.Frame):
 
                 try:
 
-                    await page.goto("https://messages.textfree.us/register", timeout=50000)
+                    await page.goto("https://messages.textfree.us/register", timeout=50000, wait_until="load")
                     break
                 except Exception as e:
                     print(e)
@@ -435,16 +456,73 @@ class SubscribePremium(ttk.Frame):
                     await asyncio.sleep(3)
                     continue
 
-            self.insert_log(f"账号 {email} 开始注册..")
+            # self.insert_log(f"账号 {email} 开始注册..")
 
-            return
+            # await page.get_by_placeholder("Email").click(timeout=60000)
+            await page.get_by_placeholder("Email").fill(email,timeout=30000)
 
-            # noinspection PyUnboundLocalVariable
-            await page.get_by_role("button", name="Log in by phone Number").click()  # +15878843622.session
-            input_phone_field = page.locator("div").filter(has_text=re.compile(r"^\+\d+$"))
+            two_fa = self.two_fa_var.get()
+            # await page.get_by_placeholder("Password", exact=True).click()
+            await page.get_by_placeholder("Password", exact=True).fill(two_fa,timeout=30000)
+
+            # await page.get_by_placeholder("Confirm Password", exact=True).click()
+            await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa,timeout=30000)
+
+
+            try:
+
+                async with recaptchav2.AsyncSolver(page) as solver:
+                    token = await solver.solve_recaptcha(attempts=5)
+                    print(token)
+                    self.insert_log(f"账号 {email} 人机验证成功")
+            except Exception as error:
+                print(error)
+                self.insert_log(f"账号 {email} 人机验证失败")
+                return False
+
+            await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)
+            self.insert_log(f"账号 {email} 点击注册成功")
+            await page.get_by_role("button", name="Got it").click(timeout=30000)
+            await page.get_by_text("Choose a TextFree Number").click(timeout=30000)
+            self.insert_log(f"账号 {email} 检测选择号码成功，退出任务！")
+
+            # await page.get_by_role("checkbox", name="进行人机身份验证").click()
+
+            # # Wait for the reCAPTCHA iframe to load
+            # await page.wait_for_selector('#recaptcha iframe')
+            #
+            # # Switch to the reCAPTCHA iframe
+            # iframe = page.locator('#recaptcha iframe')
+            # await page.wait_for_selector('#recaptcha iframe')
+            # await page.wait_for_load_state()
+            #
+            # # Solve the reCAPTCHA challenge
+            # await page.solve_recaptcha()
+            #
+            # # Switch back to the main frame
+            # await page.switch_to_main_frame()
+
+
+
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(2)").first.click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(3)").first.click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(4)").first.click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(4)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(3)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(2)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(2)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(3)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(4)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(4)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(3)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(2)").click()
+            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").get_by_role("button", name="验证", exact=True).click()
+
+
+
 
             return True
         except Exception as e:
-            self.insert_log(f"账号 {phone_number} 开通会员失败，原因：{e}")
+            self.insert_log(f"账号 {email} 注册失败，原因：{e}")
             # common_utils.credit_card_times_subtraction_or_add(file_path=Path(self.card_path_var.get()), card_number=card_number, lock=self.lock, is_add=True)
             return False

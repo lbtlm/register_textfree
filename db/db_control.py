@@ -80,7 +80,7 @@ class SqliteDB:
         if proxy_file:
             base_config_db.proxy_file = proxy_file
         if email_file:
-            base_config_db.visa_card_file = email_file
+            base_config_db.email_file = email_file
         if two_fa:
             base_config_db.two_fa = two_fa
         if session_dir_path:

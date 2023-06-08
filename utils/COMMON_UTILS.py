@@ -13,23 +13,11 @@ import requests
 import urllib3
 
 
-from setting.GLOBAL import SESSION_DIR
 
 
 class COMMON_UTILS:
     def __init__(self):
         pass
-
-    # 获取RunSessions文件夹下 所有session文件
-    def get_session_list(self, session_dir: Path = None) -> list:
-        res_list = []
-        if session_dir:
-            file_names = session_dir.glob('*.session')
-        else:
-            file_names = SESSION_DIR.glob('*.session')
-        for file in file_names:
-            res_list.append(str(file))
-        return res_list
 
     # 新增一行数据
     def insert_txt_line(self, file: Path, text: str):

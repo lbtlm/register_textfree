@@ -19,12 +19,17 @@ SECRET_FILE = KEY_DIR / "激活码.txt"
 # endregion
 
 
+# region 账号分类
+ACCOUNT_DIR = BASE_DIR_PATH / "账号分类"
+SUCCESS_ACCOUNT_FILE = ACCOUNT_DIR / "成功的账号.txt"
+FAILED_ACCOUNT_FILE = ACCOUNT_DIR / "失败的账号.txt"
+
 """
 session文件夹初始化
 """
-SESSION_DIR = BASE_PATH + "\\sessions\\"
-DONE_DIR = BASE_PATH + "\\转换完成\\"
-FAILED_DIR = BASE_PATH + "\\转换失败\\"
+# SESSION_DIR = BASE_PATH + "\\分类\\"
+# DONE_DIR = BASE_PATH + "\\转换完成\\"
+# FAILED_DIR = BASE_PATH + "\\转换失败\\"
 
 """
 代理池
@@ -47,9 +52,9 @@ DEV_LOG_MODEL = 1
 IS_SAVE_LOG = 1
 
 DIR_LIST = [
-    SESSION_DIR, DEV_LOG_DIR, DONE_DIR, FAILED_DIR, KEY_DIR
+     DEV_LOG_DIR,  KEY_DIR ,ACCOUNT_DIR
 ]
 
 FILE_LIST = [
-    PROXY_FILE, EMAIL_FILE, SECRET_FILE
+    PROXY_FILE, EMAIL_FILE, SECRET_FILE ,SUCCESS_ACCOUNT_FILE, FAILED_ACCOUNT_FILE
 ]
