@@ -11,6 +11,13 @@ import ttkbootstrap as ttk
 import urllib3
 from playwright.async_api import async_playwright, Playwright
 from playwright_recaptcha import recaptchav2
+
+from playwright_recaptcha.errors import (
+    RecaptchaNotFoundError,
+    RecaptchaRateLimitError,
+    RecaptchaSolveError,
+)
+
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledText
 from ttkbootstrap.tooltip import ToolTip
@@ -468,22 +475,48 @@ class SubscribePremium(ttk.Frame):
             # await page.get_by_placeholder("Confirm Password", exact=True).click()
             await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa,timeout=30000)
 
-
-            try:
-
-                async with recaptchav2.AsyncSolver(page) as solver:
-                    token = await solver.solve_recaptcha(attempts=5)
-                    print(token)
-                    self.insert_log(f"账号 {email} 人机验证成功")
-            except Exception as error:
-                print(error)
-                self.insert_log(f"账号 {email} 人机验证失败")
-                return False
+            solver_failed_times = 0
+            async with recaptchav2.AsyncSolver(page) as solver:
+                while True:
+                    try:
+                        # async with recaptchav2.AsyncSolver(page) as solver:
+                        token = await solver.solve_recaptcha(attempts=5)
+                        print(token)
+                        self.insert_log(f"账号 {email} 人机验证成功")
+                        break
+                    except RecaptchaNotFoundError:
+                        solver_failed_times += 1
+                        if solver_failed_times >= 3:
+                            self.insert_log(f"账号 {email} 连续3次未检测到人机验证框，直接退出...")
+                            return False
+                        self.insert_log(f"账号 {email} 未检测到人机验证框，休息3秒，再次检测...")
+                        await asyncio.sleep(3)
+                        continue
+                    except RecaptchaRateLimitError:
+                        solver_failed_times += 1
+                        if solver_failed_times >= 3:
+                            self.insert_log(f"账号 {email} 连续3次人机验证频率过快，直接退出...")
+                            return False
+                        self.insert_log(f"账号 {email} 人机验证频率过快，休息3秒，再次检测...")
+                        await asyncio.sleep(3)
+                        continue
+                    except RecaptchaSolveError:
+                        solver_failed_times += 1
+                        if solver_failed_times >= 3:
+                            self.insert_log(f"账号 {email} 连续3次人机验证无法处理，直接退出...")
+                            return False
+                        self.insert_log(f"账号 {email} 人机验证无法处理，休息3秒，再次检测...")
+                        await asyncio.sleep(3)
+                        continue
+                    except Exception as error:
+                        print(error)
+                        self.insert_log(f"账号 {email} 人机验证触发未知错误，直接返回...\n{error}")
+                        return False
 
             await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)
             self.insert_log(f"账号 {email} 点击注册成功")
             await page.get_by_role("button", name="Got it").click(timeout=30000)
-            await page.get_by_text("Choose a TextFree Number").click(timeout=30000)
+            await page.get_by_text("Choose a TextFree Number").click(timeout=120000)
             self.insert_log(f"账号 {email} 检测选择号码成功，退出任务！")
 
             # await page.get_by_role("checkbox", name="进行人机身份验证").click()

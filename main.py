@@ -2,7 +2,7 @@ import multiprocessing
 import sys
 import threading
 from tkinter import messagebox
-
+import pyaudio
 from UI.login_page import LoginPage
 from init.InitDirFile import InitDirFile
 from oem.oem_config import common_config
