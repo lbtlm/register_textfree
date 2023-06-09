@@ -475,6 +475,8 @@ class SubscribePremium(ttk.Frame):
             # await page.get_by_placeholder("Confirm Password", exact=True).click()
             await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa,timeout=30000)
 
+            await page.wait_for_timeout(3000)
+
             solver_failed_times = 0
             async with recaptchav2.AsyncSolver(page) as solver:
                 while True:
@@ -493,13 +495,13 @@ class SubscribePremium(ttk.Frame):
                         await asyncio.sleep(3)
                         continue
                     except RecaptchaRateLimitError:
-                        solver_failed_times += 1
-                        if solver_failed_times >= 3:
-                            self.insert_log(f"账号 {email} 连续3次人机验证频率过快，直接退出...")
-                            return False
-                        self.insert_log(f"账号 {email} 人机验证频率过快，休息3秒，再次检测...")
-                        await asyncio.sleep(3)
-                        continue
+                        # solver_failed_times += 1
+                        # if solver_failed_times >= 3:
+                        self.insert_log(f"账号 {email} 人机验证频率过快，直接退出...")
+                        return False
+                        # self.insert_log(f"账号 {email} 人机验证频率过快，休息3秒，再次检测...")
+                        # await asyncio.sleep(3)
+                        # continue
                     except RecaptchaSolveError:
                         solver_failed_times += 1
                         if solver_failed_times >= 3:
