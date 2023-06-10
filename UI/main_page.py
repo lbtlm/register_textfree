@@ -397,31 +397,6 @@ class SubscribePremium(ttk.Frame):
 
     async def do_register_textfree(self, playwright: Playwright,email:str) -> bool:
 
-        # proxy = common_utils.get_first_line_proxy(file=self.proxy_file_path_var.get())
-        # if proxy == {}:
-        #     self.insert_log("代理池为空，请检查！")
-        #     return False
-
-        # global page
-        # card_res = common_utils.get_first_line_credit_card(file=self.card_path_var.get(), lock=self.lock)
-
-        # if isinstance(card_res, str):
-        #     self.insert_log(f"账号 {phone_number} 获取信用卡失败，原因：{card_res}")
-        #     # common_utils.credit_card_times_subtraction_or_add(file_path=Path(self.card_path_var.get()), card_number=card_number, is_add=True)
-        #     return False
-        # else:
-        #     card_dict = card_res
-        #     """
-        #     "card_number": line_list[0],
-        #     "expiration_date": line_list[1],
-        #     "cvv": line_list[2]
-        #     """
-        #     card_number = card_dict['card_number']
-        #     card_date = card_dict['expiration_date']
-        #     card_cvv = card_dict['cvv']
-
-        # common_utils.credit_card_times_subtraction_or_add(file_path=Path(self.card_path_var.get()), card_number=card_number, lock=self.lock)
-
         try:
             # 进入循环  获取代理池
             proxy_failed_times = 0
@@ -457,32 +432,30 @@ class SubscribePremium(ttk.Frame):
                     proxy_failed_times += 1
                     if proxy_failed_times >= 5:
                         self.insert_log(f"账号 {email} 更换代理次数过多，放弃此账号...")
-                        # common_utils.credit_card_times_subtraction_or_add(file_path=Path(self.card_path_var.get()), card_number=card_number, lock=self.lock, is_add=True)
                         return False
 
                     await asyncio.sleep(3)
                     continue
 
-            # self.insert_log(f"账号 {email} 开始注册..")
-
-            # await page.get_by_placeholder("Email").click(timeout=60000)
             await page.get_by_placeholder("Email").fill(email,timeout=30000)
+            self.insert_log(f"账号 {email} 成功输入邮箱名...")
+            await page.wait_for_timeout(3000)
 
             two_fa = self.two_fa_var.get()
-            # await page.get_by_placeholder("Password", exact=True).click()
             await page.get_by_placeholder("Password", exact=True).fill(two_fa,timeout=30000)
+            self.insert_log(f"账号 {email} 成功输入密码...")
+            await page.wait_for_timeout(3000)
 
-            # await page.get_by_placeholder("Confirm Password", exact=True).click()
             await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa,timeout=30000)
-
+            self.insert_log(f"账号 {email} 成功输入确认密码...")
             await page.wait_for_timeout(3000)
 
             solver_failed_times = 0
             async with recaptchav2.AsyncSolver(page) as solver:
+                self.insert_log(f"账号 {email} 开始人机验证...")
                 while True:
                     try:
-                        # async with recaptchav2.AsyncSolver(page) as solver:
-                        token = await solver.solve_recaptcha(attempts=5)
+                        token = await solver.solve_recaptcha()
                         print(token)
                         self.insert_log(f"账号 {email} 人机验证成功")
                         break
@@ -495,13 +468,8 @@ class SubscribePremium(ttk.Frame):
                         await asyncio.sleep(3)
                         continue
                     except RecaptchaRateLimitError:
-                        # solver_failed_times += 1
-                        # if solver_failed_times >= 3:
                         self.insert_log(f"账号 {email} 人机验证频率过快，直接退出...")
                         return False
-                        # self.insert_log(f"账号 {email} 人机验证频率过快，休息3秒，再次检测...")
-                        # await asyncio.sleep(3)
-                        # continue
                     except RecaptchaSolveError:
                         solver_failed_times += 1
                         if solver_failed_times >= 3:
@@ -514,50 +482,33 @@ class SubscribePremium(ttk.Frame):
                         print(error)
                         self.insert_log(f"账号 {email} 人机验证触发未知错误，直接返回...\n{error}")
                         return False
+            try:
 
-            await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)
-            self.insert_log(f"账号 {email} 点击注册成功")
-            await page.get_by_role("button", name="Got it").click(timeout=30000)
-            await page.get_by_text("Choose a TextFree Number").click(timeout=120000)
-            self.insert_log(f"账号 {email} 检测选择号码成功，退出任务！")
+                await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)
+                self.insert_log(f"账号 {email} 点击注册按钮成功")
+            except Exception as e:
+                print(e)
+                self.insert_log(f"账号 {email} 点击注册按钮失败，直接返回...")
+                return False
 
-            # await page.get_by_role("checkbox", name="进行人机身份验证").click()
+            try:
+                await page.get_by_role("button", name="Got it").click(timeout=30000)
+                self.insert_log(f"账号 {email} 检测点击注册跳转成功")
+            except Exception as e:
+                print(e)
+                self.insert_log(f"账号 {email} 检测点击注册跳转失败，直接返回...")
+                return False
 
-            # # Wait for the reCAPTCHA iframe to load
-            # await page.wait_for_selector('#recaptcha iframe')
-            #
-            # # Switch to the reCAPTCHA iframe
-            # iframe = page.locator('#recaptcha iframe')
-            # await page.wait_for_selector('#recaptcha iframe')
-            # await page.wait_for_load_state()
-            #
-            # # Solve the reCAPTCHA challenge
-            # await page.solve_recaptcha()
-            #
-            # # Switch back to the main frame
-            # await page.switch_to_main_frame()
+            try:
 
-
-
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(2)").first.click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(3)").first.click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("td:nth-child(4)").first.click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(4)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(3)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(2) > td:nth-child(2)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(2)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(3)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(3) > td:nth-child(4)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(4)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(3)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").locator("tr:nth-child(4) > td:nth-child(2)").click()
-            # await page.frame_locator("iframe[name=\"c-kdl2frggekp0\"]").get_by_role("button", name="验证", exact=True).click()
-
-
-
+                await page.get_by_text("Choose a TextFree Number").click(timeout=120000)
+                self.insert_log(f"账号 {email} 检测到选择号码页面，注册成功")
+            except Exception as e:
+                print(e)
+                self.insert_log(f"账号 {email} 120秒内，未检测到选择号码页面，直接返回...")
+                return False
 
             return True
         except Exception as e:
             self.insert_log(f"账号 {email} 注册失败，原因：{e}")
-            # common_utils.credit_card_times_subtraction_or_add(file_path=Path(self.card_path_var.get()), card_number=card_number, lock=self.lock, is_add=True)
             return False
