@@ -8,7 +8,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
-import aiohttp
+# import aiohttp
 import pydub
 import speech_recognition
 from playwright.async_api import Page, Response
@@ -19,6 +19,8 @@ from playwright_recaptcha.errors import (
     RecaptchaSolveError,
 )
 from playwright_recaptcha.recaptchav2.recaptcha_box import AsyncRecaptchaBox
+from setting.GLOBAL import LOG_FILE
+from utils.COMMON_UTILS import common_utils
 from utils.LogUtil import logger
 
 
@@ -85,23 +87,24 @@ class AsyncSolver:
         """
         loop = asyncio.get_event_loop()
 
-        failed_mp3_times = 0
-        while True:
-            try:
-                response = await self._page.request.get(audio_url, timeout=50000)
-                mp3_body = await response.body()
-                logger.info(f"请求谷歌获取MP3字节成功！")
-                break
-            except Exception as e:
-                logger.info(f"请求谷歌获取MP3字节失败，{e}")
-
-                failed_mp3_times += 1
-                if failed_mp3_times >= 3:
-                    return None
-                await self._page.wait_for_timeout(3000)
-
+        # failed_mp3_times = 0
+        # while True:
+        #     try:
+        #         response = await self._page.request.get(audio_url, timeout=50000)
+        #         mp3_body = await response.body()
+        #         logger.info(f"请求谷歌获取MP3字节成功！")
+        #         break
+        #     except Exception as e:
+        #         logger.info(f"请求谷歌获取MP3字节失败，{e}")
+        #
+        #         failed_mp3_times += 1
+        #         if failed_mp3_times >= 3:
+        #             return None
+        #         await self._page.wait_for_timeout(3000)
+        response = await self._page.request.get(audio_url, timeout=50000)
         wav_audio = io.BytesIO()
-        mp3_audio = io.BytesIO(mp3_body)
+        mp3_audio = io.BytesIO(await response.body())
+        logger.info(f"请求谷歌获取MP3字节成功！")
 
         with ThreadPoolExecutor() as executor:
             audio = await loop.run_in_executor(
@@ -128,7 +131,6 @@ class AsyncSolver:
                 return await loop.run_in_executor(
                     executor, recognizer.recognize_google, audio_data
                 )
-
 
             except speech_recognition.UnknownValueError:
                 logger.info("识别谷歌语音失败！转为文字失败！")
@@ -166,21 +168,31 @@ class AsyncSolver:
         """
         await recaptcha_box.checkbox.click(force=True)
 
-        while recaptcha_box.frames_are_attached():
-            if await recaptcha_box.is_solved():
-                if self.token is None:
-                    raise RecaptchaSolveError
+        logger.info(f"7777")
+        common_utils.insert_log(LOG_FILE, f"7777")
+        try:
+            while recaptcha_box.frames_are_attached():
+                logger.info(f"100110")
+                common_utils.insert_log(LOG_FILE, f"100110")
+                if await recaptcha_box.is_solved():
+                    if self.token is None:
+                        raise RecaptchaSolveError
 
-                break
-
-            if (
-                    await recaptcha_box.audio_challenge_is_visible()
-                    or await recaptcha_box.audio_challenge_button.is_visible()
-                    and await recaptcha_box.audio_challenge_button.is_enabled()
-            ):
-                break
-
-            await self._page.wait_for_timeout(250)
+                    break
+                logger.info(f"8888")
+                common_utils.insert_log(LOG_FILE, f"8888")
+                if (
+                        await recaptcha_box.audio_challenge_is_visible()
+                        or await recaptcha_box.audio_challenge_button.is_visible()
+                        and await recaptcha_box.audio_challenge_button.is_enabled()
+                ):
+                    break
+                logger.info(f"999")
+                common_utils.insert_log(LOG_FILE, f"999")
+                await self._page.wait_for_timeout(250)
+        except Exception as e:
+            logger.info(f"点击复选框失败，{e}")
+            common_utils.insert_log(LOG_FILE, f"点击复选框失败，{e}")
 
     async def _get_audio_url(self, recaptcha_box: AsyncRecaptchaBox) -> str:
         """
@@ -287,34 +299,50 @@ class AsyncSolver:
         RecaptchaSolveError
             If the reCAPTCHA could not be solved.
         """
+        logger.info(f"aaa")
+        common_utils.insert_log(LOG_FILE, "aaa")
         self.token = None
+        logger.info(f"bbb")
+        common_utils.insert_log(LOG_FILE, "bbb")
         self._page.on("response", self._extract_token)
+        logger.info(f"eee")
+        common_utils.insert_log(LOG_FILE, "eee")
 
         attempts = attempts or self._attempts
+        logger.info(f"qqq")
+        common_utils.insert_log(LOG_FILE, "qqq")
         recaptcha_box = await AsyncRecaptchaBox.from_frames(self._page.frames)
+        logger.info(f"{recaptcha_box}")
+        common_utils.insert_log(LOG_FILE, f"{recaptcha_box}")
 
-        await self._random_delay()
-
-
+        await asyncio.sleep(random.randint(3, 5))
+        # await self._random_delay()
+        logger.info(f"444")
+        common_utils.insert_log(LOG_FILE, f"444")
         if (
                 await recaptcha_box.checkbox.is_hidden()
                 and await recaptcha_box.audio_challenge_button.is_disabled()
         ):
             raise RecaptchaNotFoundError
+        logger.info(f"555")
+        common_utils.insert_log(LOG_FILE, f"555")
+        try:
+            if await recaptcha_box.checkbox.is_visible(timeout=30000):
+                await self._click_checkbox(recaptcha_box)
 
-
-        if await recaptcha_box.checkbox.is_visible():
-            await self._click_checkbox(recaptcha_box)
-
-            if self.token is not None:
-                return self.token
-
+                if self.token is not None:
+                    return self.token
+        except Exception as e:
+            logger.info(f"6666-{e}")
+            common_utils.insert_log(LOG_FILE, f"6666-{e}")
+        logger.info(f"ddd")
+        common_utils.insert_log(LOG_FILE, "ddd")
         while attempts > 0:
-            await self._random_delay()
+            await asyncio.sleep(random.randint(3, 5))
             url = await self._get_audio_url(recaptcha_box)
             logger.info(f"获取到mp3地址:{url}")
 
-            await self._random_delay()
+            await asyncio.sleep(random.randint(3, 5))
 
             text = await self._convert_audio_to_text(url)
 
@@ -323,7 +351,7 @@ class AsyncSolver:
                 attempts -= 1
                 continue
 
-            await self._random_delay()
+            await asyncio.sleep(random.randint(3, 5))
             await self._submit_audio_text(recaptcha_box, text)
 
             if (

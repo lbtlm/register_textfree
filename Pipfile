@@ -8,6 +8,8 @@ ttkbootstrap = "*"
 playwright = "*"
 requests = "*"
 sqlalchemy = "*"
+pyaudio = "*"
+ffmpeg-python = "*"
 
 [dev-packages]
 

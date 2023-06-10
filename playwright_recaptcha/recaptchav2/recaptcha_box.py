@@ -12,6 +12,9 @@ from playwright.sync_api import Frame as SyncFrame
 from playwright.sync_api import Locator as SyncLocator
 
 from playwright_recaptcha.errors import RecaptchaNotFoundError, RecaptchaSolveError
+from setting.GLOBAL import LOG_FILE
+from utils.COMMON_UTILS import common_utils
+from utils.LogUtil import logger
 
 Locator = Union[AsyncLocator, SyncLocator]
 Frame = Union[AsyncFrame, SyncFrame]
@@ -547,19 +550,25 @@ class AsyncRecaptchaBox(RecaptchaBox):
             If no unchecked reCAPTCHA boxes were found.
         """
         frame_pairs = cls._get_recaptcha_frame_pairs(frames)
-
+        logger.info(f"111")
+        common_utils.insert_log(LOG_FILE, "111")
         for anchor_frame, bframe_frame in frame_pairs:
             checkbox = anchor_frame.get_by_role("checkbox", name="I'm not a robot")
+            logger.info(f"222")
+            common_utils.insert_log(LOG_FILE, "222")
+            await asyncio.sleep(3)
 
             if (
-                await bframe_frame.get_by_role(
-                    "button", name="Get an audio challenge"
-                ).is_visible()
+                # await bframe_frame.get_by_role(
+                #     "button", name="Get an audio challenge"
+                # ).is_visible()
+                await bframe_frame.locator("css=button#recaptcha-audio-button").is_visible(timeout=5000)
                 or await checkbox.is_visible()
                 and not await checkbox.is_checked()
             ):
                 return cls(anchor_frame, bframe_frame)
-
+            logger.info(f"333")
+            common_utils.insert_log(LOG_FILE, "333")
         raise RecaptchaSolveError("No unchecked reCAPTCHA boxes were found.")
 
     @property
@@ -620,4 +629,4 @@ class AsyncRecaptchaBox(RecaptchaBox):
         bool
             True if the reCAPTCHA challenge is solved, False otherwise.
         """
-        return await self.checkbox.is_visible() and await self.checkbox.is_checked()
+        return await self.checkbox.is_visible(timeout=50000) and await self.checkbox.is_checked(timeout=50000)

@@ -24,7 +24,7 @@ def on_closing():
             process.terminate()
             process.join(1)
 
-        PLAYWRIGHT_BROWSERS_PATH = 0
+        # PLAYWRIGHT_BROWSERS_PATH = 0
         app.destroy()
 
         app.quit()
