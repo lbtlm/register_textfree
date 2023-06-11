@@ -10,6 +10,8 @@ from tkinter.filedialog import askopenfilename
 import ttkbootstrap as ttk
 import urllib3
 from playwright.async_api import async_playwright, Playwright
+
+from UI.solve_captcha import SolveCaptcha
 from playwright_recaptcha import recaptchav2
 
 from playwright_recaptcha.errors import (
@@ -28,7 +30,6 @@ from utils.COMMON_UTILS import common_utils
 from utils.LogUtil import logger
 
 from db.db_control import db_controller
-
 
 
 class SubscribePremium(ttk.Frame):
@@ -304,12 +305,13 @@ class SubscribePremium(ttk.Frame):
 
             # threads = []
             for num in range(thread_num):
-                t = threading.Thread(target=self.start_new, args=( sem,))
+                t = threading.Thread(target=self.start_new, args=(sem,))
                 t.daemon = True
                 t.start()
+
     # endregion
 
-    def start_new(self,  sem: threading.Semaphore):
+    def start_new(self, sem: threading.Semaphore):
         with sem:
             try:
                 loop = asyncio.new_event_loop()
@@ -346,10 +348,7 @@ class SubscribePremium(ttk.Frame):
         self.progressbar.configure(value=self.process_bar_value)
         self.pb_label.configure(text=f'完成: {self.process_bar_value}%')
 
-
     async def register_textfree(self):
-
-
 
         task_register_textfree = asyncio.create_task(self.register_textfree_ie())
 
@@ -371,6 +370,7 @@ class SubscribePremium(ttk.Frame):
                 failed_times += 1
                 if failed_times >= 5:
                     self.insert_log("邮箱文件已经全部使用完毕！")
+                    break
 
                 await asyncio.sleep(0.1)
 
@@ -395,7 +395,21 @@ class SubscribePremium(ttk.Frame):
                 self.complete += 1
                 self.change_process_bar_frame(int(self.complete * 100 / self.amount))
 
-    async def do_register_textfree(self, playwright: Playwright,email:str) -> bool:
+    async def do_register_textfree(self, playwright: Playwright, email: str) -> bool:
+
+        args = [
+            '--deny-permission-prompts',
+            '--no-default-browser-check',
+            '--no-first-run',
+            '--deny-permission-prompts',
+            '--disable-popup-blocking',
+            '--ignore-certificate-errors',
+            '--no-service-autorun',
+            '--password-store=basic',
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
+            '--window-size=640,480',
+            '--disable-audio-output'
+        ]
 
         try:
             # 进入循环  获取代理池
@@ -412,11 +426,14 @@ class SubscribePremium(ttk.Frame):
                 if browser_type == 1:
 
                     browser = await playwright.firefox.launch(headless=False,  # http://70.kookeey.info:11988
-                                                              proxy=proxy
+                                                              proxy=proxy,
+                                                              args=args
+
                                                               )
                 else:
                     browser = await playwright.chromium.launch(headless=False,  # 70.kookeey.info:11988
-                                                               proxy=proxy
+                                                               proxy=proxy,
+                                                               args=args
                                                                )
 
                 page = await browser.new_page()
@@ -437,51 +454,64 @@ class SubscribePremium(ttk.Frame):
                     await asyncio.sleep(3)
                     continue
 
-            await page.get_by_placeholder("Email").fill(email,timeout=30000)
+            await page.get_by_placeholder("Email").fill(email, timeout=30000)
             self.insert_log(f"账号 {email} 成功输入邮箱名...")
             await page.wait_for_timeout(3000)
 
             two_fa = self.two_fa_var.get()
-            await page.get_by_placeholder("Password", exact=True).fill(two_fa,timeout=30000)
+            await page.get_by_placeholder("Password", exact=True).fill(two_fa, timeout=30000)
             self.insert_log(f"账号 {email} 成功输入密码...")
             await page.wait_for_timeout(3000)
 
-            await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa,timeout=30000)
+            await page.get_by_placeholder("Confirm Password", exact=True).fill(two_fa, timeout=30000)
             self.insert_log(f"账号 {email} 成功输入确认密码...")
             await page.wait_for_timeout(3000)
 
-            solver_failed_times = 0
-            async with recaptchav2.AsyncSolver(page) as solver:
-                self.insert_log(f"账号 {email} 开始人机验证...")
-                while True:
-                    try:
-                        token = await solver.solve_recaptcha()
-                        print(token)
-                        self.insert_log(f"账号 {email} 人机验证成功")
-                        break
-                    except RecaptchaNotFoundError:
-                        solver_failed_times += 1
-                        if solver_failed_times >= 3:
-                            self.insert_log(f"账号 {email} 连续3次未检测到人机验证框，直接退出...")
-                            return False
-                        self.insert_log(f"账号 {email} 未检测到人机验证框，休息3秒，再次检测...")
-                        await asyncio.sleep(3)
-                        continue
-                    except RecaptchaRateLimitError:
-                        self.insert_log(f"账号 {email} 人机验证频率过快，直接退出...")
-                        return False
-                    except RecaptchaSolveError:
-                        solver_failed_times += 1
-                        if solver_failed_times >= 3:
-                            self.insert_log(f"账号 {email} 连续3次人机验证无法处理，直接退出...")
-                            return False
-                        self.insert_log(f"账号 {email} 人机验证无法处理，休息3秒，再次检测...")
-                        await asyncio.sleep(3)
-                        continue
-                    except Exception as error:
-                        print(error)
-                        self.insert_log(f"账号 {email} 人机验证触发未知错误，直接返回...\n{error}")
-                        return False
+
+            # 新版 captche
+            try:
+                captcha_solver = SolveCaptcha(page)
+                await captcha_solver.start()
+                del captcha_solver
+            except Exception as e:
+                print(f"人机验证失败，触发错误{e}")
+                self.insert_log(f"账号 {email} 人机验证失败.")
+                # await browser.close()
+                return False
+
+
+            # solver_failed_times = 0
+            # async with recaptchav2.AsyncSolver(page) as solver:
+            #     self.insert_log(f"账号 {email} 开始人机验证...")
+            #     while True:
+            #         try:
+            #             token = await solver.solve_recaptcha()
+            #             print(token)
+            #             self.insert_log(f"账号 {email} 人机验证成功")
+            #             break
+            #         except RecaptchaNotFoundError:
+            #             solver_failed_times += 1
+            #             if solver_failed_times >= 3:
+            #                 self.insert_log(f"账号 {email} 连续3次未检测到人机验证框，直接退出...")
+            #                 return False
+            #             self.insert_log(f"账号 {email} 未检测到人机验证框，休息3秒，再次检测...")
+            #             await asyncio.sleep(3)
+            #             continue
+            #         except RecaptchaRateLimitError:
+            #             self.insert_log(f"账号 {email} 人机验证频率过快，直接退出...")
+            #             return False
+            #         except RecaptchaSolveError:
+            #             solver_failed_times += 1
+            #             if solver_failed_times >= 3:
+            #                 self.insert_log(f"账号 {email} 连续3次人机验证无法处理，直接退出...")
+            #                 return False
+            #             self.insert_log(f"账号 {email} 人机验证无法处理，休息3秒，再次检测...")
+            #             await asyncio.sleep(3)
+            #             continue
+            #         except Exception as error:
+            #             print(error)
+            #             self.insert_log(f"账号 {email} 人机验证触发未知错误，直接返回...\n{error}")
+            #             return False
             try:
 
                 await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)

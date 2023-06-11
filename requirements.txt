@@ -1,11 +1,9 @@
 certifi==2023.5.7
 charset-normalizer==3.1.0
-ffmpeg==1.4
 greenlet==2.0.1
 idna==3.4
 Pillow==9.5.0
 playwright==1.32.1
-playwright-recaptcha==0.2.0
 PyAudio==0.2.13
 pydub==0.25.1
 pyee==9.0.4

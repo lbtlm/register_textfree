@@ -68,7 +68,7 @@ class RecaptchaBox(ABC):
 
     @staticmethod
     def _get_recaptcha_frame_pairs(
-        frames: Iterable[Frame],
+            frames: Iterable[Frame],
     ) -> List[Tuple[Frame, Frame]]:
         """
         Get the reCAPTCHA anchor and bframe frame pairs.
@@ -93,7 +93,7 @@ class RecaptchaBox(ABC):
                 lambda frame: re.search(
                     "/recaptcha/(api2|enterprise)/anchor", frame.url
                 )
-                is not None,
+                              is not None,
                 frames,
             )
         )
@@ -103,7 +103,7 @@ class RecaptchaBox(ABC):
                 lambda frame: re.search(
                     "/recaptcha/(api2|enterprise)/bframe", frame.url
                 )
-                is not None,
+                              is not None,
                 frames,
             )
         )
@@ -124,10 +124,10 @@ class RecaptchaBox(ABC):
 
     @staticmethod
     def _check_if_attached(
-        func: Union[
-            Callable[[AsyncRecaptchaBox], Awaitable[bool]],
-            Callable[[SyncRecaptchaBox], bool],
-        ]
+            func: Union[
+                Callable[[AsyncRecaptchaBox], Awaitable[bool]],
+                Callable[[SyncRecaptchaBox], bool],
+            ]
     ) -> Union[
         Callable[[AsyncRecaptchaBox], Awaitable[bool]],
         Callable[[SyncRecaptchaBox], bool],
@@ -175,6 +175,10 @@ class RecaptchaBox(ABC):
         """The reCAPTCHA checkbox locator."""
         return self.anchor_frame.get_by_role("checkbox", name="I'm not a robot")
 
+        # # checkbox = self.anchor_frame.get_by_role("checkbox", name="I'm not a robot")
+        # common_utils.insert_log(LOG_FILE, "debug", "checkbox:{}".format(checkbox))
+        # return checkbox
+
     @property
     def audio_challenge_button(self) -> Locator:
         """The reCAPTCHA audio challenge button locator."""
@@ -212,7 +216,7 @@ class RecaptchaBox(ABC):
             True if the reCAPTCHA frames are attached, False otherwise.
         """
         return (
-            not self.anchor_frame.is_detached() and not self.bframe_frame.is_detached()
+                not self.anchor_frame.is_detached() and not self.bframe_frame.is_detached()
         )
 
     def frames_are_detached(self) -> bool:
@@ -239,8 +243,8 @@ class RecaptchaBox(ABC):
     @classmethod
     @abstractmethod
     def from_frames(
-        cls,
-        frames: Iterable[Frame],
+            cls,
+            frames: Iterable[Frame],
     ) -> Union[AsyncRecaptchaBox, SyncRecaptchaBox]:
         """
         Create a reCAPTCHA box using a list of frames.
@@ -396,11 +400,11 @@ class SyncRecaptchaBox(RecaptchaBox):
             checkbox = anchor_frame.get_by_role("checkbox", name="I'm not a robot")
 
             if (
-                bframe_frame.get_by_role(
-                    "button", name="Get an audio challenge"
-                ).is_visible()
-                or checkbox.is_visible()
-                and not checkbox.is_checked()
+                    bframe_frame.get_by_role(
+                        "button", name="Get an audio challenge"
+                    ).is_visible()
+                    or checkbox.is_visible()
+                    and not checkbox.is_checked()
             ):
                 return cls(anchor_frame, bframe_frame)
 
@@ -524,6 +528,12 @@ class AsyncRecaptchaBox(RecaptchaBox):
         self._anchor_frame = anchor_frame
         self._bframe_frame = bframe_frame
 
+        # """The reCAPTCHA checkbox locator."""
+        # self.checkbox = self.anchor_frame.get_by_role("checkbox", name="I'm not a robot")
+        # common_utils.insert_log(LOG_FILE, "checkbox:{}".format(self.checkbox))
+        # return checkbox
+
+
     def __repr__(self) -> str:
         return f"AsyncRecaptchaBox(anchor_frame={self._anchor_frame!r}, bframe_frame={self._bframe_frame!r})"
 
@@ -559,12 +569,12 @@ class AsyncRecaptchaBox(RecaptchaBox):
             await asyncio.sleep(3)
 
             if (
-                # await bframe_frame.get_by_role(
-                #     "button", name="Get an audio challenge"
-                # ).is_visible()
-                await bframe_frame.locator("css=button#recaptcha-audio-button").is_visible(timeout=5000)
-                or await checkbox.is_visible()
-                and not await checkbox.is_checked()
+                    # await bframe_frame.get_by_role(
+                    #     "button", name="Get an audio challenge"
+                    # ).is_visible()
+                    await bframe_frame.locator("css=button#recaptcha-audio-button").is_visible(timeout=5000)
+                    or await checkbox.is_visible()
+                    and not await checkbox.is_checked()
             ):
                 return cls(anchor_frame, bframe_frame)
             logger.info(f"333")
@@ -617,7 +627,7 @@ class AsyncRecaptchaBox(RecaptchaBox):
         bool
             True if the reCAPTCHA audio challenge is visible, False otherwise.
         """
-        return await self.bframe_frame.get_by_text("Press PLAY to listen").is_visible()
+        return await self.bframe_frame.get_by_text("Press PLAY to listen").is_visible(timeout=30000)
 
     @RecaptchaBox._check_if_attached
     async def is_solved(self) -> bool:
@@ -629,4 +639,26 @@ class AsyncRecaptchaBox(RecaptchaBox):
         bool
             True if the reCAPTCHA challenge is solved, False otherwise.
         """
-        return await self.checkbox.is_visible(timeout=50000) and await self.checkbox.is_checked(timeout=50000)
+
+        common_utils.insert_log(LOG_FILE,"开始检测窗口")
+        await asyncio.sleep(3000)
+
+        try:
+            # if self.checkbox is not None and await self.checkbox.is_checked():
+            #     return True
+
+
+            is_visible = await self.checkbox.is_visible(timeout=500000)
+        except Exception as is_visible_error:
+            logger.info(f"is_visible error: {is_visible_error}")
+            common_utils.insert_log(LOG_FILE, f"is_visible error: {is_visible_error}")
+            is_visible = False
+
+        try:
+            is_checked = await self.checkbox.is_checked(timeout=500000)
+        except Exception as is_checked_error:
+            logger.info(f"is_checked error: {is_checked_error}")
+            common_utils.insert_log(LOG_FILE, f"is_checked error: {is_checked_error}")
+            is_checked = False
+
+        return is_visible and is_checked

@@ -174,22 +174,32 @@ class AsyncSolver:
             while recaptcha_box.frames_are_attached():
                 logger.info(f"100110")
                 common_utils.insert_log(LOG_FILE, f"100110")
-                if await recaptcha_box.is_solved():
+                try:
+                    is_solved = await recaptcha_box.is_solved()
+                except Exception as solved_e:
+                    logger.info(f"solved失败，{solved_e}")
+                    common_utils.insert_log(LOG_FILE, f"solved失败，{solved_e}")
+                    break
+
+                if is_solved is True:
                     if self.token is None:
                         raise RecaptchaSolveError
+                    else:
+                        common_utils.insert_log(LOG_FILE, f"00000-{self.token}")
 
-                    break
+                    # break
                 logger.info(f"8888")
                 common_utils.insert_log(LOG_FILE, f"8888")
+
                 if (
                         await recaptcha_box.audio_challenge_is_visible()
-                        or await recaptcha_box.audio_challenge_button.is_visible()
-                        and await recaptcha_box.audio_challenge_button.is_enabled()
+                        or await recaptcha_box.audio_challenge_button.is_visible(timeout=50000)
+                        and await recaptcha_box.audio_challenge_button.is_enabled(timeout=100000)
                 ):
                     break
                 logger.info(f"999")
                 common_utils.insert_log(LOG_FILE, f"999")
-                await self._page.wait_for_timeout(250)
+                await self._page.wait_for_timeout(3000)
         except Exception as e:
             logger.info(f"点击复选框失败，{e}")
             common_utils.insert_log(LOG_FILE, f"点击复选框失败，{e}")
@@ -312,7 +322,7 @@ class AsyncSolver:
         logger.info(f"qqq")
         common_utils.insert_log(LOG_FILE, "qqq")
         recaptcha_box = await AsyncRecaptchaBox.from_frames(self._page.frames)
-        logger.info(f"{recaptcha_box}")
+        # logger.info(f"{recaptcha_box}")
         common_utils.insert_log(LOG_FILE, f"{recaptcha_box}")
 
         await asyncio.sleep(random.randint(3, 5))
