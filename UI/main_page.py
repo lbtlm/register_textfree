@@ -376,7 +376,7 @@ class SubscribePremium(ttk.Frame):
 
             else:
                 failed_times = 0
-                self.insert_log(f"账号 {email} 正在进行浏览器注册...")
+
                 # return
                 async with async_playwright() as playwright:
                     # json_file = Path(session_file).parent / f"{Path(session_file).stem}.json"
@@ -407,7 +407,6 @@ class SubscribePremium(ttk.Frame):
             '--no-service-autorun',
             '--password-store=basic',
             '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
-            '--window-size=640,480',
             '--disable-audio-output'
         ]
 
@@ -428,23 +427,24 @@ class SubscribePremium(ttk.Frame):
                     browser = await playwright.firefox.launch(headless=False,  # http://70.kookeey.info:11988
                                                               proxy=proxy,
                                                               args=args
-
                                                               )
                 else:
                     browser = await playwright.chromium.launch(headless=False,  # 70.kookeey.info:11988
                                                                proxy=proxy,
-                                                               args=args
+                                                               args=args,
+                                                               chromium_sandbox=True
                                                                )
 
                 page = await browser.new_page()
 
                 try:
+                    self.insert_log(f"账号 {email} 正在进行浏览器注册...，使用代理 {proxy['server']}")
+                    await page.goto("https://messages.textfree.us/register", timeout=60000)
 
-                    await page.goto("https://messages.textfree.us/register", timeout=50000, wait_until="load")
                     break
                 except Exception as e:
                     print(e)
-                    self.insert_log(f"账号 {email} 代理 {proxy['server']} 无法连接，正在更换代理...")
+                    self.insert_log(f"账号 {email} 代理 {proxy['server']} 60秒无法加载页面，正在更换代理...")
                     await browser.close()
                     proxy_failed_times += 1
                     if proxy_failed_times >= 5:
@@ -467,18 +467,23 @@ class SubscribePremium(ttk.Frame):
             self.insert_log(f"账号 {email} 成功输入确认密码...")
             await page.wait_for_timeout(3000)
 
-
             # 新版 captche
             try:
-                captcha_solver = SolveCaptcha(page)
-                await captcha_solver.start()
-                del captcha_solver
+                captcha_solver = SolveCaptcha(page,email)
+                solver_res = await captcha_solver.start()
+                if solver_res is False:
+                    self.insert_log(f"账号 {email} 人机验证失败.")
+                    del captcha_solver
+                    return False
+                else:
+                    self.insert_log(f"账号 {email} 人机验证成功.")
+                    del captcha_solver
+
             except Exception as e:
                 print(f"人机验证失败，触发错误{e}")
                 self.insert_log(f"账号 {email} 人机验证失败.")
                 # await browser.close()
                 return False
-
 
             # solver_failed_times = 0
             # async with recaptchav2.AsyncSolver(page) as solver:
@@ -513,7 +518,6 @@ class SubscribePremium(ttk.Frame):
             #             self.insert_log(f"账号 {email} 人机验证触发未知错误，直接返回...\n{error}")
             #             return False
             try:
-
                 await page.get_by_role("button", name="Sign Up", exact=True).click(timeout=30000)
                 self.insert_log(f"账号 {email} 点击注册按钮成功")
             except Exception as e:

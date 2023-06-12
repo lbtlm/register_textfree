@@ -27,7 +27,7 @@ class COMMON_UTILS:
 
     def insert_log(self, file: Path, text: str):
         with file.open('a', encoding='utf-8') as f:
-            f.write(text)
+            f.write(text + "\n")
 
     def del_txt_line(self, file: Path, text: str):
 
