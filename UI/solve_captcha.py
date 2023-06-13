@@ -34,7 +34,8 @@ class SolveCaptcha:
         try:
             self.recaptcha_frame = self.page.locator("//iframe[@title='reCAPTCHA']")
             common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到recaptcha_frame")
-            await self.delay()
+            # await self.delay()
+            await asyncio.sleep(1)
         except Exception as error:
             common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取recaptcha的iframe失败，{error}")
             # common_utils.insert_log(f"账号 {self.email} 获取recaptcha的iframe失败，{error}")
@@ -45,7 +46,8 @@ class SolveCaptcha:
             self.recaptcha = self.page.frame(name=name)
 
             common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到recaptcha的iframe")
-            await self.delay()
+            # await self.delay()
+            await asyncio.sleep(1)
         except Exception as error:
             common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取recaptcha的iframe失败，{error}")
             return False
@@ -53,17 +55,20 @@ class SolveCaptcha:
         await self.recaptcha.locator("//div[@class='recaptcha-checkbox-border']").click()
         common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了recaptcha的checkbox")
 
-        await self.delay()
+        # await self.delay()
+        await asyncio.sleep(1)
 
         while True:
 
             s = self.recaptcha.locator("//span[@id='recaptcha-anchor']")
             if s is None:
-                await self.delay()
+                # await self.delay()
+                # await asyncio.sleep(1)
                 continue
             else:
                 common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到recaptcha的界面")
-                await self.delay()
+                # await self.delay()
+                # await asyncio.sleep(1)
                 break
 
         anchor_res = await s.get_attribute("aria-checked")
@@ -77,8 +82,8 @@ class SolveCaptcha:
         self.recaptcha_mp3_frame = self.page.frame(name=name)
         common_utils.insert_log(LOG_FILE, f"账号 {self.email} recaptcha_mp3_frame:{self.recaptcha_mp3_frame}")
         common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到mp3的iframe")
-        await self.delay()
-
+        # await self.delay()
+        # await asyncio.sleep(1)
         return True
 
     async def start(self) -> bool:
@@ -97,7 +102,7 @@ class SolveCaptcha:
 
         tries = 0
         while tries <= 5:
-            await self.delay()
+            await asyncio.sleep(1)
             try:
 
                 solve_res = await self.solve_captcha()
@@ -115,19 +120,50 @@ class SolveCaptcha:
 
     async def solve_captcha(self):
 
-        while True:  # 等待mp3的iframe加载完成
-            common_utils.insert_log(LOG_FILE, f"账号 {self.email} 开始点击MP3按钮")
-            mp = self.recaptcha_mp3_frame.locator("button[id='recaptcha-audio-button']")
-            common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp：{mp}")
-            await mp.click(timeout=30000)
-            common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了recaptcha的mp3按钮")
-            await self.delay()
-            await asyncio.sleep(10000)
+        mp3_click_locator, down_load_url_locator = None, None
 
-            mp3_click_locator = await self.recaptcha_mp3_frame.query_selector("//div[@class='rc-doscaptcha-header-text']")
-            common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp3_click_locator：{mp3_click_locator}")
-            down_load_url_locator = await self.recaptcha_mp3_frame.query_selector("//a[@class='rc-audiochallenge-tdownload-link']")
-            common_utils.insert_log(LOG_FILE, f"账号 {self.email} down_load_url_locator：{down_load_url_locator}")
+        common_utils.insert_log(LOG_FILE, f"账号 {self.email} 开始点击MP3按钮")
+        one_click = 0
+        while True:
+            if one_click > 0:
+                await self.recaptcha.locator("//div[@class='recaptcha-checkbox-border']").click()
+                common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了recaptcha的checkbox")
+                await self.delay()
+
+            one_click += 1
+            # mp = self.recaptcha_mp3_frame.locator("button[id='recaptcha-audio-button']")
+            mp = self.recaptcha_mp3_frame.get_by_role("button", name="Get an audio challenge")
+            common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp：{mp}")
+            if mp is None:
+                await self.delay()
+                continue
+            else:
+                await mp.click(timeout=30000)
+                common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了MP3按钮")
+                await self.delay()
+
+                mp3_click_locator = await self.recaptcha_mp3_frame.query_selector("//div[@class='rc-doscaptcha-header-text']")
+                common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp3_click_locator：{mp3_click_locator}")
+
+
+
+                down_load_url_locator = await self.recaptcha_mp3_frame.query_selector("//a[@class='rc-audiochallenge-tdownload-link']")
+                common_utils.insert_log(LOG_FILE, f"账号 {self.email} down_load_url_locator：{down_load_url_locator}")
+
+                if mp3_click_locator is not None or down_load_url_locator is not None:
+                    break
+
+            # common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp：{mp}")
+            # await mp.click(timeout=30000)
+
+            # common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了recaptcha的mp3按钮")
+            # await self.delay()
+            # await asyncio.sleep(10000)
+
+            # mp3_click_locator = await self.recaptcha_mp3_frame.query_selector("//div[@class='rc-doscaptcha-header-text']")
+            # common_utils.insert_log(LOG_FILE, f"账号 {self.email} mp3_click_locator：{mp3_click_locator}")
+            # down_load_url_locator = await self.recaptcha_mp3_frame.query_selector("//a[@class='rc-audiochallenge-tdownload-link']")
+            # common_utils.insert_log(LOG_FILE, f"账号 {self.email} down_load_url_locator：{down_load_url_locator}")
 
             if mp3_click_locator is not None:
                 mp3_click_locator_text = await mp3_click_locator.inner_text()
@@ -142,29 +178,41 @@ class SolveCaptcha:
                 break
             else:
                 common_utils.insert_log(LOG_FILE, f"账号 {self.email} 未点击到MP3按钮，重新点击！")
+                await asyncio.sleep(1)
+
+        while True:
+            href = await down_load_url_locator.get_attribute("href")
+            common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到MP3下载链接：{href}")
+
+            urllib.request.urlretrieve(href, f"{self.email}.mp3")
+
+            sound = pydub.AudioSegment.from_mp3(f"{self.email}.mp3").export(f"{self.email}.wav", format="wav")
+
+            recognizer = Recognizer()
+
+            recaptcha_audio = AudioFile(f"{self.email}.wav")
+            with recaptcha_audio as source:
+                audio = recognizer.record(source)
+
+            text = recognizer.recognize_google(audio)
+            common_utils.insert_log(LOG_FILE, f"账号 {self.email} 识别到MP3中的文字：{text}")
+            await self.recaptcha_mp3_frame.locator("id=audio-response").fill(text, timeout=300000)
+            # await self.delay()
+
+            await asyncio.sleep(6)
+            await self.recaptcha_mp3_frame.locator("//button[@id='recaptcha-verify-button']").click(timeout=300000)
+            await self.delay()
+            try:
+                s = self.recaptcha.locator("//span[@id='recaptcha-anchor']")
+                anchor_res = await s.get_attribute("aria-checked")
+                if anchor_res != "false":
+                    common_utils.insert_log(LOG_FILE, f"账号 {self.email} recaptcha的checkbox已经被选中")
+                    break
+            except Exception as e:
+                common_utils.insert_log(LOG_FILE, f"账号 {self.email} 判断是否已经验证成功时出错：{e}")
                 await self.delay()
-
-        href = await down_load_url_locator.get_attribute("href")
-        common_utils.insert_log(LOG_FILE, f"账号 {self.email} 获取到MP3下载链接：{href}")
-
-        urllib.request.urlretrieve(href, f"{self.email}.mp3")
-
-        sound = pydub.AudioSegment.from_mp3(f"{self.email}.mp3").export(f"{self.email}.wav", format="wav")
-
-        recognizer = Recognizer()
-
-        recaptcha_audio = AudioFile(f"{self.email}.wav")
-        with recaptcha_audio as source:
-            audio = recognizer.record(source)
-
-        text = recognizer.recognize_google(audio)
-        common_utils.insert_log(LOG_FILE, f"账号 {self.email} 识别到MP3中的文字：{text}")
-
-        await self.recaptcha_mp3_frame.locator("id=audio-response").fill(text, timeout=300000)
-        await self.delay()
-        # await asyncio.sleep(6)
-        await self.recaptcha_mp3_frame.locator("//button[@id='recaptcha-verify-button']").click(timeout=300000)
-        await self.delay()
+            await self.recaptcha.locator("//div[@class='recaptcha-checkbox-border']").click()
+            common_utils.insert_log(LOG_FILE, f"账号 {self.email} 点击了recaptcha的checkbox")
 
         return True
 
