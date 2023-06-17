@@ -640,25 +640,21 @@ class AsyncRecaptchaBox(RecaptchaBox):
             True if the reCAPTCHA challenge is solved, False otherwise.
         """
 
-        common_utils.insert_log(LOG_FILE,"开始检测窗口")
-        await asyncio.sleep(3000)
+        # common_utils.insert_log(LOG_FILE,"开始检测窗口")
+        # await asyncio.sleep(3000)
 
         try:
             # if self.checkbox is not None and await self.checkbox.is_checked():
             #     return True
-
-
             is_visible = await self.checkbox.is_visible(timeout=500000)
         except Exception as is_visible_error:
             logger.info(f"is_visible error: {is_visible_error}")
-            common_utils.insert_log(LOG_FILE, f"is_visible error: {is_visible_error}")
             is_visible = False
 
         try:
             is_checked = await self.checkbox.is_checked(timeout=500000)
         except Exception as is_checked_error:
             logger.info(f"is_checked error: {is_checked_error}")
-            common_utils.insert_log(LOG_FILE, f"is_checked error: {is_checked_error}")
             is_checked = False
 
         return is_visible and is_checked

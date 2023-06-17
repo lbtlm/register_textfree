@@ -1,18 +1,8 @@
 import fileinput
-import hashlib
 import random
 import threading
-import time
-import uuid
 from datetime import datetime
 from pathlib import Path
-from tkinter.messagebox import showerror
-from typing import Union
-
-import requests
-import urllib3
-
-
 
 
 class COMMON_UTILS:
@@ -77,7 +67,6 @@ class COMMON_UTILS:
         with Path.open(file_name, 'r', encoding='utf-8') as f:
             return f.read()
 
-        # return lines[0].strip()
 
     def get_and_del_first_line(self, file_name: Path):
         try:
@@ -102,61 +91,6 @@ class COMMON_UTILS:
     def get_now_time():
         return datetime.now().strftime('%Y%m%d%H%M%S')
 
-
-    # region  md5加密
-    @staticmethod
-    def md5(text):
-        h = hashlib.md5()
-        h.update(text.encode("utf-8"))
-        return h.hexdigest()
-
-    # endregion
-
-    # region  获取机器码
-    def get_machine_info(self):
-        # g_machine_info = ""
-        g_uuid_tep = ""
-        for i in range(5):
-            g_uuid_tep += str(uuid.uuid1())
-            # disk_id = self.get_disk_id()
-            # cpu_id = self.get_cpu_id()
-        g_machine_info = self.md5(f"{g_uuid_tep}")
-        if g_machine_info != "":
-            return g_machine_info
-        if g_machine_info == "":
-            showerror("错误", "获取机器码失败，请联系作者")
-
-    # endregion
-
-    # region  http请求卡密
-    # 异步post请求，防止卡UI线程
-    @staticmethod
-    def http_post(url, params=None, timeout=30):
-        urllib3.disable_warnings()
-        header = {"Connection": "close"}
-        res = ""
-        failed_times = 0
-        while res == "":
-            try:
-                res = requests.post(url, data=params, headers=header, timeout=timeout, verify=False)
-                break
-            except Exception as e:
-                # print(e)
-                failed_times += 1
-                if failed_times == 5:
-                    break
-                time.sleep(2)
-                continue
-
-        if res == "":
-            return res
-        elif res.status_code == 200:
-            result_text = res.text
-            return result_text
-        else:
-            return ""
-
-    # endregion
 
     # region  获取第一行代理池字典
     def get_first_line_proxy(self, file: str,lock:threading.Lock) -> dict:

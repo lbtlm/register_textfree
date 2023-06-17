@@ -46,10 +46,10 @@ class Logger(object):
                         item_list[0].unlink()
 
             # 5、 创建一个handler,用于写入日志文件
-            rq = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-            log_name = DEV_LOG_DIR / (rq + '.log')
+            # rq = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+            # log_name = DEV_LOG_DIR / (rq + '.log')
             # fh = logging.FileHandler(log_name, mode='w')
-            fh = handlers.TimedRotatingFileHandler(filename=log_name, encoding="utf-8")
+            fh = handlers.TimedRotatingFileHandler(filename=LOG_FILE, encoding="utf-8")
             fh.setFormatter(formatter)
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)

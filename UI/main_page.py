@@ -34,7 +34,7 @@ from db.db_control import db_controller
 
 class SubscribePremium(ttk.Frame):
     # +15878843622.session
-    def __init__(self, master, overtime):
+    def __init__(self, master, overtime=None):
         super().__init__(master, padding=15)
         # self.card_path_var = "请选择信用卡txt，格式请见提示"  ttk.StringVar(value="abc123456")
         self.card_list = None

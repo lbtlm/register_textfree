@@ -87,20 +87,6 @@ class AsyncSolver:
         """
         loop = asyncio.get_event_loop()
 
-        # failed_mp3_times = 0
-        # while True:
-        #     try:
-        #         response = await self._page.request.get(audio_url, timeout=50000)
-        #         mp3_body = await response.body()
-        #         logger.info(f"请求谷歌获取MP3字节成功！")
-        #         break
-        #     except Exception as e:
-        #         logger.info(f"请求谷歌获取MP3字节失败，{e}")
-        #
-        #         failed_mp3_times += 1
-        #         if failed_mp3_times >= 3:
-        #             return None
-        #         await self._page.wait_for_timeout(3000)
         response = await self._page.request.get(audio_url, timeout=50000)
         wav_audio = io.BytesIO()
         mp3_audio = io.BytesIO(await response.body())
@@ -167,13 +153,8 @@ class AsyncSolver:
             The reCAPTCHA box.
         """
         await recaptcha_box.checkbox.click(force=True)
-
-        logger.info(f"7777")
-        common_utils.insert_log(LOG_FILE, f"7777")
         try:
             while recaptcha_box.frames_are_attached():
-                logger.info(f"100110")
-                common_utils.insert_log(LOG_FILE, f"100110")
                 try:
                     is_solved = await recaptcha_box.is_solved()
                 except Exception as solved_e:
@@ -187,9 +168,6 @@ class AsyncSolver:
                     else:
                         common_utils.insert_log(LOG_FILE, f"00000-{self.token}")
 
-                    # break
-                logger.info(f"8888")
-                common_utils.insert_log(LOG_FILE, f"8888")
 
                 if (
                         await recaptcha_box.audio_challenge_is_visible()
@@ -197,12 +175,10 @@ class AsyncSolver:
                         and await recaptcha_box.audio_challenge_button.is_enabled(timeout=100000)
                 ):
                     break
-                logger.info(f"999")
-                common_utils.insert_log(LOG_FILE, f"999")
+
                 await self._page.wait_for_timeout(3000)
         except Exception as e:
             logger.info(f"点击复选框失败，{e}")
-            common_utils.insert_log(LOG_FILE, f"点击复选框失败，{e}")
 
     async def _get_audio_url(self, recaptcha_box: AsyncRecaptchaBox) -> str:
         """
@@ -309,33 +285,19 @@ class AsyncSolver:
         RecaptchaSolveError
             If the reCAPTCHA could not be solved.
         """
-        logger.info(f"aaa")
-        common_utils.insert_log(LOG_FILE, "aaa")
         self.token = None
-        logger.info(f"bbb")
-        common_utils.insert_log(LOG_FILE, "bbb")
         self._page.on("response", self._extract_token)
-        logger.info(f"eee")
-        common_utils.insert_log(LOG_FILE, "eee")
-
         attempts = attempts or self._attempts
-        logger.info(f"qqq")
-        common_utils.insert_log(LOG_FILE, "qqq")
         recaptcha_box = await AsyncRecaptchaBox.from_frames(self._page.frames)
-        # logger.info(f"{recaptcha_box}")
         common_utils.insert_log(LOG_FILE, f"{recaptcha_box}")
 
         await asyncio.sleep(random.randint(3, 5))
-        # await self._random_delay()
-        logger.info(f"444")
-        common_utils.insert_log(LOG_FILE, f"444")
         if (
                 await recaptcha_box.checkbox.is_hidden()
                 and await recaptcha_box.audio_challenge_button.is_disabled()
         ):
             raise RecaptchaNotFoundError
-        logger.info(f"555")
-        common_utils.insert_log(LOG_FILE, f"555")
+
         try:
             if await recaptcha_box.checkbox.is_visible(timeout=30000):
                 await self._click_checkbox(recaptcha_box)
@@ -344,9 +306,6 @@ class AsyncSolver:
                     return self.token
         except Exception as e:
             logger.info(f"6666-{e}")
-            common_utils.insert_log(LOG_FILE, f"6666-{e}")
-        logger.info(f"ddd")
-        common_utils.insert_log(LOG_FILE, "ddd")
         while attempts > 0:
             await asyncio.sleep(random.randint(3, 5))
             url = await self._get_audio_url(recaptcha_box)

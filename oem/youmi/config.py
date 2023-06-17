@@ -15,14 +15,14 @@ class Config:
     def __init__(self):
         self.name = "有米"
         self.customer = ""
-        self.version = "0.0.6"
+        self.version = "0.0.9"
         self.about = "有米工具箱 专注于开发各种营销类软件\n唯一TG客服 @youmi_kefu\n官方网站：www.youmitools.com"
-        self.title = f"官方TG客服 {self.customer} 获取激活码 版本号({self.version}) 软件路径：{str(BASE_DIR_PATH)}"
+        self.title = f"版本号({self.version}) 软件路径：{str(BASE_DIR_PATH)}"
         self.welcome = "textfree注册机"
         self.doc = help_doc
         self.update = update_dict
         self.icon = oem_image_dic[f"{OEM_NAME}_icon"]
-        self.app_code = "0ccae02b05ce11ee9b2f00bf3ea3203c"
+        self.app_code = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         self.app_version = "1.0.0.1"
 
 
